@@ -14,7 +14,7 @@ FROM alpine:latest
 WORKDIR /app
 
 COPY --from=builder /app/server .
-COPY public .
+COPY public ./public
 
 EXPOSE 3000
 
