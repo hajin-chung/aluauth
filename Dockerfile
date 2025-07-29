@@ -9,7 +9,7 @@ COPY . .
 
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix nocgo -o /app/server ./main.go
 
-FROM apline:latest
+FROM alpine:latest
 
 WORKDIR /app
 
