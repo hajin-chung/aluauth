@@ -1,0 +1,12 @@
+services:
+  auth:
+    build: .
+    ports:
+      - "3000:3000"
+    env_file:
+      - path: ./server.env
+        required: true
+  redis:
+    image: "redis:latest"
+    ports:
+      - "6379:6379"
