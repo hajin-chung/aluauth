@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/lucsky/cuid"
@@ -15,6 +17,11 @@ func main() {
 	SERVER_PORT := os.Getenv("SERVER_PORT")
 	REDIS_ADDR := os.Getenv("REDIS_ADDR")
 	PASSWORD := os.Getenv("PASSWORD")
+	SESSION_TTL, err := strconv.Atoi(os.Getenv("SESSION_TTL"))
+	if err != nil {
+		log.Printf("error while parsing $SESSION_TTL may not be a number defaulting to 30 days: %s", err)
+		SESSION_TTL = 30 * 24 * 60 * 60 // 30 days in seconds
+	}
 
 	log.Printf("SERVER_PORT=%s", SERVER_PORT)
 	log.Printf("REDIS_ADDR=%s", REDIS_ADDR)
@@ -41,8 +48,8 @@ func main() {
 			return c.Status(401).Send(nil)
 		}
 		
-		exists, _ := rdb.SIsMember(redisCtx, "sessions", sessionId).Result()
-		if exists {
+		exists, _ := rdb.Exists(redisCtx, fmt.Sprintf("sessions:%s", sessionId)).Result()
+		if exists == 1 {
 			return c.Status(200).Send(nil)
 		} else {
 			return c.Status(401).Send(nil)
@@ -59,7 +66,8 @@ func main() {
 			sessionId := cuid.New()
 
 			// put session id to redis
-			_, err := rdb.SAdd(redisCtx, "sessions", sessionId).Result()
+			ttl := time.Duration(SESSION_TTL) * time.Second
+			_, err := rdb.Set(redisCtx, fmt.Sprintf("sessions:%s", sessionId), 1, ttl).Result()
 			if err != nil {
 				return c.Status(500).Send(nil)
 			}
@@ -69,6 +77,7 @@ func main() {
 				Name: "session_id",
 				Value: sessionId,
 				Domain: "deps.me",
+				Expires: time.Now().Add(ttl),
 			}
 			c.Cookie(&cookie)
 			return c.Status(200).Send(nil)
