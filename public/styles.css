@@ -1,0 +1,61 @@
+body {
+  margin: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: oklch(21.6% 0.006 56.043);
+}
+p {
+  margin: 0;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 200px;
+  position: relative;
+}
+
+#password-input {
+  width: 100%;
+  border: 2px solid oklch(44.4% 0.011 73.639);
+  border-radius: 8px;
+  font-size: 20px;
+  padding: 8px;
+  color: white;
+  background-color: oklch(37.4% 0.01 67.558);
+  transition: all 0.3s;
+  outline: none;
+}
+
+#password-input:focus {
+  border: 2px solid oklch(55.3% 0.013 58.071);
+}
+
+#password-input.wrong {
+  border: 2px solid oklch(50.5% 0.213 27.518);
+}
+
+#submit {
+  width: 100%;
+  background-color: oklch(37.4% 0.01 67.558);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  padding: 8px;
+  transition: all 0.3s;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+
+#submit:hover {
+  transform: translateY(-3px);
+  cursor: pointer;
+}
+
+#message {
+  color: #ff0000;
+  margin: 0;
+}
