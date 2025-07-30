@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/lucsky/cuid"
 	"github.com/redis/go-redis/v9"
 )
@@ -26,6 +27,7 @@ func main() {
 	log.Printf("SERVER_PORT=%s", SERVER_PORT)
 	log.Printf("REDIS_ADDR=%s", REDIS_ADDR)
 	log.Printf("PASSWORD=%s", PASSWORD)
+	log.Printf("SESSION_TTL=%d", SESSION_TTL)
 
 	if REDIS_ADDR == "" {
 		REDIS_ADDR = "127.0.0.1:6379"
@@ -40,6 +42,10 @@ func main() {
 
 	app := fiber.New()
 
+	app.Use(logger.New(logger.Config{
+		TimeZone: "Asia/Seoul",
+		TimeFormat: "2006-01-02T15:04:05.999999-07:00",
+	}))
 	app.Static("/", "./public")
 
 	app.Get("/check", func (c *fiber.Ctx) error {
@@ -48,7 +54,11 @@ func main() {
 			return c.Status(401).Send(nil)
 		}
 		
-		exists, _ := rdb.Exists(redisCtx, fmt.Sprintf("sessions:%s", sessionId)).Result()
+		exists, err := rdb.Exists(redisCtx, fmt.Sprintf("sessions:%s", sessionId)).Result()
+		if err != nil {
+			log.Printf("error while rdb.Exists: %s\n", err)
+			return c.Status(500).Send(nil)
+		}
 		if exists == 1 {
 			return c.Status(200).Send(nil)
 		} else {
@@ -62,29 +72,30 @@ func main() {
 
 	app.Post("/login", func (c *fiber.Ctx) error {
 		password := string(c.Body()[:])
-		if password == PASSWORD {
-			sessionId := cuid.New()
-
-			// put session id to redis
-			ttl := time.Duration(SESSION_TTL) * time.Second
-			_, err := rdb.Set(redisCtx, fmt.Sprintf("sessions:%s", sessionId), 1, ttl).Result()
-			if err != nil {
-				return c.Status(500).Send(nil)
-			}
-
-			// set cooke of .deps.me
-			cookie := fiber.Cookie {
-				Name: "session_id",
-				Value: sessionId,
-				Domain: "deps.me",
-				Expires: time.Now().Add(ttl),
-			}
-			c.Cookie(&cookie)
-			return c.Status(200).Send(nil)
+		if password != PASSWORD {
+			return c.Status(401).Send(nil)
 		}
-		// redirect to login
-		return c.Status(401).Send(nil)
+
+		sessionId := cuid.New()
+
+		// put session id to redis
+		ttl := time.Duration(SESSION_TTL) * time.Second
+		_, err := rdb.Set(redisCtx, fmt.Sprintf("sessions:%s", sessionId), 1, ttl).Result()
+		if err != nil {
+			log.Printf("error while rdb.Exists: %s\n", err)
+			return c.Status(500).Send(nil)
+		}
+
+		// set cooke of .deps.me
+		cookie := fiber.Cookie {
+			Name: "session_id",
+			Value: sessionId,
+			Domain: "deps.me",
+			Expires: time.Now().Add(ttl),
+		}
+		c.Cookie(&cookie)
+		return c.Status(200).Send(nil)
 	})
 
-	app.Listen(fmt.Sprintf(":%s", SERVER_PORT))
+	log.Panic(app.Listen(fmt.Sprintf(":%s", SERVER_PORT)))
 }
